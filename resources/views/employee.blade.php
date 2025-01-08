@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Interns</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
@@ -75,10 +75,14 @@
             <div class="col-md-12">
                 <div class="card mt-4 shadow">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h4>Employee Registration</h4>
+                        <h4>Intern Registration</h4>
                         <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#exampleModal">
                             <i class="bi bi-database-add"></i> ADD
                         </button>
+                        <button id="exportBtn" class="btn btn-dark">
+                           Export to Excel
+                        </button>
+                        
                     </div>
                     <div class="card-body">
                         <table id="myTable" class="table table-bordered">
@@ -104,6 +108,7 @@
                         <div class="modal-header">
                             <h5 class="modal-title" id="exampleModalLabel">Add Employee</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    
                         </div>
                         <div class="modal-body">
                             <form id="employee-form" method="post">
@@ -187,6 +192,7 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="https://cdn.datatables.net/2.1.2/js/dataTables.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 
     <script>
         $(document).ready(function () {
@@ -216,19 +222,64 @@
                         "data": null,
                         "render": function (data, type, row) {
                             return '<a href="#" class="btn btn-sm btn-success edit-btn" data-id="'+data.id+'" data-name="'+data.name+'" data-email="'+data.email+'" data-address="'+data.address+'" data-phone="'+data.phone+'">Edit</a> ' +
-                            '<a href="#" class="btn btn-sm btn-danger delete-btn" data-id="'+data.id+'">Delete</a>';
+                                   '<a href="#" class="btn btn-sm btn-danger delete-btn" data-id="'+data.id+'">Delete</a>';
                         }
                     }
                 ]
             });
+    
+            // Export to Excel functionality
+            $('#exportBtn').click(function() {
+    var table = $('#myTable').DataTable();
+    var data = table.rows({search: 'applied'}).data();  // Get filtered rows
+    var ws_data = [];
+    
+    // Add company details
+    ws_data.push(['Company Name: Xelwel Innovation Pvt. Ltd.']);  // Replace with your company name
+    ws_data.push(['Email: info@xelwel.com.np']);  // Replace with your company email
+    ws_data.push(['Phone: +977-9843569096']);  // Replace with your company phone number
+    ws_data.push([]);  // Empty row for spacing
 
+    // Specify columns you want to export
+    var selectedColumns = ['id', 'name', 'email', 'address', 'phone'];
+
+    // Add headers to Excel sheet
+    var headers = [];
+    selectedColumns.forEach(function(col) {
+        headers.push(col.charAt(0).toUpperCase() + col.slice(1)); // Capitalize first letter
+    });
+    ws_data.push(headers);  // Add headers as the first row
+
+    // Add data rows to Excel sheet
+    data.each(function(value, index) {
+        var row = [];
+        selectedColumns.forEach(function(col) {
+            row.push(value[col]);  // Push only the selected columns' data
+        });
+        ws_data.push(row);  // Add row to the data
+    });
+
+    // Convert array of arrays to sheet and export
+    var ws = XLSX.utils.aoa_to_sheet(ws_data);  // Convert to sheet
+
+    // Add a company logo (optional)
+    // Note: Adding images directly to XLSX is more complex and requires additional libraries like xlsx-populate
+    // If this is essential, explore libraries like `xlsx-populate` or `exceljs`
+
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Employees');  // Append sheet to workbook
+    XLSX.writeFile(wb, 'intens.xlsx');  // Export Excel file
+});
+
+    
+            // Edit button functionality
             $('#myTable tbody').on('click', '.edit-btn', function () {
                 var id = $(this).data('id');
                 var name = $(this).data('name');
                 var email = $(this).data('email');
                 var address = $(this).data('address');
                 var phone = $(this).data('phone');
-              
+    
                 $('#edit-id').val(id);
                 $('#edit-name').val(name);
                 $('#edit-email').val(email);
@@ -236,11 +287,12 @@
                 $('#edit-phone').val(phone);
                 $('#editModal').modal('show');
             });
-
+    
+            // Employee form submit (add new employee)
             $('#employee-form').submit(function (e) {
                 e.preventDefault();
                 const employeedata = new FormData(this);
-
+    
                 $.ajax({
                     url: '{{ route('store') }}',
                     method: 'post',
@@ -262,11 +314,12 @@
                     }
                 });
             });
-
+    
+            // Edit form submit (update employee)
             $('#edit-form').submit(function (e) {
                 e.preventDefault();
                 const employeedata = new FormData(this);
-
+    
                 $.ajax({
                     url: '{{ route('update') }}',
                     method: 'POST',
@@ -290,10 +343,11 @@
                     }
                 });
             });
-
+    
+            // Delete button functionality
             $(document).on('click', '.delete-btn', function() {
                 var id = $(this).data('id');
-
+    
                 if (confirm('Are you sure you want to delete this employee?')) {
                     $.ajax({
                         url: '{{ route('delete') }}',
@@ -303,17 +357,16 @@
                             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                         },
                         success: function(response) {
-                            console.log(response); // Debugging: log the response
                             if (response.status === 200) {
-                                alert(response.message); // Show success message
-                                $('#myTable').DataTable().ajax.reload(); // Reload the table data
+                                alert(response.message);
+                                $('#myTable').DataTable().ajax.reload();
                             } else {
-                                alert(response.message); // Show error message
+                                alert(response.message);
                             }
                         },
                         error: function(xhr, status, error) {
-                            console.error(xhr); // Debugging: log the error
-                            alert('Error: ' + error); // Show generic error message
+                            console.error(xhr);
+                            alert('Error: ' + error);
                         }
                     });
                 }
